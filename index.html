@@ -49,7 +49,7 @@ button,input,select,textarea{font:inherit} button{cursor:pointer}
 
   <main class="main">
     <section id="dashboard" class="section active">
-      <div class="topbar"><div><h1>Dashboard</h1><p>Guest relationship and Outlook campaign overview.</p></div><div class="actions"><button class="btn" onclick="openSettings()">⚙ Outlook Settings</button><button class="btn primary" onclick="openGuest()">+ Add Guest</button></div></div>
+      <div class="topbar"><div><h1>Dashboard</h1><p>Guest relationship and Outlook campaign overview.</p></div><div class="actions"><button class="btn primary" onclick="openGuest()">+ Add Guest</button></div></div>
       <div class="grid">
         <div class="card metric"><span>Total Guests</span><b id="mGuests">0</b></div>
         <div class="card metric"><span>Email Subscribers</span><b id="mSubs">0</b></div>
@@ -71,15 +71,15 @@ button,input,select,textarea{font:inherit} button{cursor:pointer}
     </section>
 
     <section id="email" class="section">
-      <div class="topbar"><div><h1>Email Blast</h1><p>Create campaigns and send through your Salvation Solutions Outlook mailbox.</p></div><div class="actions"><button class="btn" onclick="openSettings()">⚙ Outlook Settings</button></div></div>
+      <div class="topbar"><div><h1>Email Blast</h1><p>Prepare selected recipients, subject and message, then hand off to your personal Outlook account for final sending.</p></div></div>
       <div class="card">
         <div class="form-grid">
           <label>Campaign Name<input id="campaignName" placeholder="September SME Outreach"></label>
           <label>Recipients<select id="recipientMode"><option value="selected">Selected guests</option><option value="subscribed">All subscribed guests</option></select></label>
           <label class="full">Subject<input id="subject" placeholder="IT solutions built for growing businesses"></label>
           <label class="full">Message<textarea id="message" rows="12" placeholder="Write your email message here…"></textarea></label>
-          <div class="full notice">Outlook sending is designed for Microsoft Graph OAuth. The browser never stores your Outlook password or Microsoft client secret. Authentication and sending should happen in the backend.</div>
-          <div class="full actions"><button class="btn" onclick="previewEmail()">Preview</button><button class="btn primary" onclick="sendBlast()">Send Email Blast</button></div>
+          <div class="full notice"><b>Personal Outlook mode:</b> the CRM does not store your Outlook password and does not require Entra. Click <b>Open in Outlook</b> to prepare the email. Recipients are placed in BCC for privacy. Review the draft in Outlook, confirm you are signed in as <b>salvationsolutions@outlook.com</b>, then press Send yourself.</div>
+          <div class="full actions"><button class="btn" onclick="previewEmail()">Preview</button><button class="btn primary" onclick="sendBlast()">Open in Outlook</button></div>
         </div>
       </div>
     </section>
@@ -95,20 +95,6 @@ button,input,select,textarea{font:inherit} button{cursor:pointer}
     <label>Email Status<select id="gStatus"><option>Subscribed</option><option>Unsubscribed</option></select></label>
     <label>Source<select id="gSource"><option>Website</option><option>Referral</option><option>Manual Entry</option><option>Campaign</option><option>Other</option></select></label>
     <div class="full actions"><button class="btn" onclick="closeModal('guestModal')">Cancel</button><button class="btn primary" onclick="saveGuest()">Save Guest</button></div>
-  </div>
-</div></div>
-
-<div class="modal" id="settingsModal"><div class="modal-card">
-  <div class="modal-head"><h3>Outlook Email Settings</h3><button class="x" onclick="closeModal('settingsModal')">×</button></div><br>
-  <div class="form-grid">
-    <label class="full">Sender Display Name<input id="sName" value="Salvation Solutions"></label>
-    <label class="full">Outlook / Microsoft 365 Sender Email<input id="sEmail" type="email" placeholder="you@outlook.com or you@yourdomain.com"></label>
-    <label>Microsoft Tenant ID<input id="sTenant" placeholder="Tenant ID"></label>
-    <label>Microsoft App Client ID<input id="sClient" placeholder="Application (client) ID"></label>
-    <label class="full">Google Apps Script Backend URL<input id="sBackend" placeholder="https://script.google.com/macros/s/.../exec"></label>
-    <div class="full notice"><b>Security:</b> do not put a Microsoft client secret or Outlook password in this HTML. Keep secrets in Apps Script Properties or another server-side backend. For personal Outlook.com accounts, the Microsoft app registration must support personal Microsoft accounts.</div>
-    <div class="full actions"><button class="btn" onclick="testConnection()">Test Connection</button><button class="btn primary" onclick="saveSettings()">Save Settings</button></div>
-    <div class="full status"><span class="dot" id="statusDot"></span><span id="statusText">Not configured</span></div>
   </div>
 </div></div>
 
@@ -166,19 +152,47 @@ function previewEmail(){
  const w=window.open('','_blank');w.document.write(`<title>Email Preview</title><div style="font-family:Arial;max-width:700px;margin:40px auto"><h2>${esc(subject.value||'(No subject)')}</h2><hr><div style="white-space:pre-wrap;line-height:1.6">${esc(message.value)}</div></div>`);
 }
 async function sendBlast(){
- const c=cfg(); if(!c.senderEmail||!c.tenantId||!c.clientId)return alert('Configure Outlook settings first.');
- if(!subject.value.trim()||!message.value.trim())return alert('Subject and message are required.');
- const mode=recipientMode.value; const ids=[...selected];
- if(mode==='selected'&&!ids.length)return alert('Select at least one guest in Guest Database.');
- if(!confirm('Send this campaign through Outlook now?'))return;
- try{
-  const r=await api('SEND_OUTLOOK_BLAST',{campaign:{name:campaignName.value.trim(),subject:subject.value.trim(),message:message.value,recipientMode:mode,selectedIds:ids},outlook:{senderName:c.senderName,senderEmail:c.senderEmail,tenantId:c.tenantId,clientId:c.clientId}});
-  alert(`Campaign submitted${r.sent!=null?`: ${r.sent} sent`:''}.`); updateMetrics();
- }catch(e){alert(e.message)}
+ const subjectText=subject.value.trim(), bodyText=message.value.trim();
+ if(!subjectText||!bodyText)return alert('Subject and message are required.');
+
+ const mode=recipientMode.value;
+ let recipients=[];
+ if(mode==='subscribed'){
+   recipients=guests.filter(g=>(g.status||g.emailStatus||'Subscribed')==='Subscribed' && g.email);
+ }else{
+   recipients=guests.filter((g,i)=>selected.has(String(g.id||g.email||i)) && g.email);
+ }
+ if(!recipients.length)return alert(mode==='selected'?'Select at least one guest in Guest Database.':'No subscribed guests with email addresses were found.');
+
+ const emails=[...new Set(recipients.map(g=>String(g.email).trim()).filter(Boolean))];
+ const campaign={
+   id:'CMP-'+Date.now(),
+   name:campaignName.value.trim()||'Outlook Campaign',
+   subject:subjectText,
+   recipientCount:emails.length,
+   recipients:emails,
+   sender:'salvationsolutions@outlook.com',
+   preparedAt:new Date().toISOString(),
+   status:'PREPARED_IN_OUTLOOK'
+ };
+
+ // Record the handoff in Google Sheets when the backend supports LOG_OUTLOOK_HANDOFF.
+ // Failure to log must not prevent the user from opening Outlook.
+ try{ await api('LOG_OUTLOOK_HANDOFF',{campaign}); }catch(e){ console.warn('Campaign logging unavailable:',e.message); }
+
+ // Use BCC so recipients do not see one another.
+ const mailto='mailto:?bcc='+encodeURIComponent(emails.join(';'))+
+   '&subject='+encodeURIComponent(subjectText)+
+   '&body='+encodeURIComponent(bodyText);
+
+ // mailto opens the user's configured mail handler (Outlook if configured).
+ window.location.href=mailto;
+
+ alert('Outlook draft prepared for '+emails.length+' recipient(s). Review the BCC list and message in Outlook, then press Send. The CRM does not send the email automatically.');
 }
 function updateMetrics(){
  mGuests.textContent=guests.length; mSubs.textContent=guests.filter(g=>(g.status||g.emailStatus||'Subscribed')==='Subscribed').length;
- const c=cfg();mOutlook.textContent=c.senderEmail?'Configured':'Not configured';
+ mOutlook.textContent='Personal Outlook';
  if(guests.length){recentGuests.innerHTML=guests.slice(0,5).map(g=>`<div style="padding:10px 0;border-bottom:1px solid var(--line)"><b>${esc(g.name||[g.firstName,g.lastName].filter(Boolean).join(' ')||'Guest')}</b><div style="color:var(--muted);font-size:13px">${esc(g.company||'')} ${g.email?'· '+esc(g.email):''}</div></div>`).join('')}
 }
 updateMetrics();
