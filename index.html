@@ -94,7 +94,7 @@ button,input,select,textarea{font:inherit} button{cursor:pointer}
 </div></div>
 <div class="eCard"><h3>👥 Select Recipients</h3><div id="chips" class="chips"></div><label style="font-size:12px"><input type="checkbox" onchange="emailAll(this.checked)"> Select / Deselect All</label><b id="selCount" style="float:right;font-size:12px">0 selected</b><div id="rlist" class="rlist" style="margin-top:10px"></div><button class="btn primary" style="width:100%;margin-top:12px" onclick="queue()">Select Guests to Continue</button><p style="font-size:11px;color:var(--muted)">Emails are queued in the Outbox so you can review each one before sending.</p></div>
 </div></div>
-<div id="ep-outbox" class="ePane"><div class="card"><div class="panel-head"><h2>Outbox</h2><span id="oq" class="badge">0 queued</span></div><div id="olist" class="empty">No emails queued.</div><div class="actions"><button class="btn danger" onclick="outbox=[];renderOut()">Clear Outbox</button><button class="btn primary" onclick="sendQueue(event)">Send All via Gmail</button></div></div></div>
+<div id="ep-outbox" class="ePane"><div class="card"><div class="panel-head"><h2>Outbox</h2><span id="oq" class="badge">0 queued</span></div><div id="olist" class="empty">No emails queued.</div><div class="actions"><button class="btn danger" onclick="outbox=[];renderOut()">Clear Outbox</button><button class="btn primary" onclick="sendQueue(event)">Send All via Outlook</button></div></div></div>
 <div id="ep-history" class="ePane"><div class="card"><div class="panel-head"><h2>Sent History</h2><button class="btn" onclick="loadHistory()">↻ Refresh</button></div><div class="table-wrap"><table><thead><tr><th>Date</th><th>Campaign</th><th>Subject</th><th>Recipients</th><th>Sent</th><th>Failed</th></tr></thead><tbody id="hist"><tr><td colspan="6" class="empty">No campaign history loaded.</td></tr></tbody></table></div></div></div>
     </section>
   </main>
@@ -175,8 +175,30 @@ function live(){let g=chosen()[0]||guests[0]||{},m=pers(message.value,g),ct=ctaT
 function applyTemplate(){let d={intro:['Helping {{company}} simplify IT operations','Hi {{first_name}},\n\nSalvation Solutions helps growing businesses improve IT asset management, service delivery and digital operations. I would be glad to discuss how we can support {{company}}.','Explore Our Services'],follow:['Following up — Salvation Solutions','Hi {{first_name}},\n\nI wanted to follow up regarding {{company}} and your interest in {{service_interest}}. Let me know if you would like to schedule a short discussion.','Let’s Talk'],fnb:['Smarter IT solutions for your F&B operations','Hi {{first_name}},\n\nWe help food and beverage businesses streamline POS, inventory, CRM and operational reporting. I would be happy to show you what this could look like for {{company}}.','View F&B Solutions'],ai:['Practical AI & automation for {{company}}','Hi {{first_name}},\n\nWe can help identify practical AI and automation opportunities that reduce repetitive work and improve visibility across your operations.','Explore Automation'],re:['Checking in from Salvation Solutions','Hi {{first_name}},\n\nIt has been a while since we connected. If {{service_interest}} is still a priority for {{company}}, I would be happy to reconnect.','Reconnect']};let x=d[emailTemplate.value];if(x){subject.value=x[0];message.value=x[1];ctaText.value=x[2]}live()}
 function queue(){let a=chosen();if(!a.length)return alert('Select at least one guest.');if(!subject.value.trim()||!message.value.trim())return alert('Subject and message are required.');outbox=a.map(g=>({id:String(g.id||g.email),g,subject:pers(subject.value,g),message:pers(message.value,g)}));document.querySelectorAll('.eTab')[1].click()}
 function renderOut(){oq.textContent=outbox.length+' queued';olist.innerHTML=outbox.length?outbox.map((o,i)=>`<div class="outbox-item" style="padding:12px;border-bottom:1px solid var(--line)"><b>${esc(o.g.firstName+' '+o.g.lastName)}</b> · ${esc(o.g.email)}<br><small>${esc(o.subject)}</small><button class="btn danger" style="float:right;padding:4px 8px" onclick="outbox.splice(${i},1);renderOut()">Remove</button></div>`).join(''):'<div class="empty">No emails queued.</div>'}
-async function sendQueue(ev){if(!outbox.length)return alert('Outbox is empty.');if(!confirm('Send '+outbox.length+' email(s) now?'))return;let b=ev.target;b.disabled=true;b.textContent='Sending…';try{let r=await api('SEND_EMAIL_BLAST',{campaign:{name:'Salvation Solutions Campaign',subject:subject.value,message:message.value,recipientMode:'selected',selectedIds:outbox.map(o=>o.id),senderName:'Salvation Solutions',ctaText:ctaText.value,ctaLink:ctaLink.value}});alert('Email Blast complete.\n\nSent: '+(r.sent||0)+'\nFailed: '+(r.failed||0));outbox=[];selected.clear();renderOut()}catch(e){alert('Email Blast failed: '+e.message)}finally{b.disabled=false;b.textContent='Send All via Gmail'}}
-async function loadHistory(){try{let r=await api('GET_CAMPAIGNS'),a=r.campaigns||[];hist.innerHTML=a.length?a.map(x=>`<tr><td>${esc(x.dateSent||'—')}</td><td>${esc(x.campaignName||x.name||'—')}</td><td>${esc(x.subject||'—')}</td><td>${esc(x.recipientCount||'—')}</td><td>${esc(x.sent||0)}</td><td>${esc(x.failed||0)}</td></tr>`).join(''):'<tr><td colspan="6" class="empty">No sent campaigns yet.</td></tr>'}catch(e){hist.innerHTML='<tr><td colspan="6" class="empty">'+esc(e.message)+'</td></tr>'}}
+function sendQueue(ev){
+ if(!outbox.length)return alert('Outbox is empty.');
+
+ // Outlook/mailto handoff: Outlook is the actual sender.
+ // BCC keeps recipients private from one another.
+ const emails=[...new Set(outbox.map(o=>String(o.g.email||'').trim()).filter(Boolean))];
+ if(!emails.length)return alert('No valid recipient email addresses found.');
+
+ const subj=String(subject.value||'').trim();
+ const body=String(message.value||'').trim();
+ const cta=String(ctaText.value||'').trim();
+ const link=String(ctaLink.value||'').trim();
+
+ let finalBody=body;
+ if(cta && link) finalBody += '\n\n'+cta+': '+link;
+ finalBody += '\n\nRegards,\nSalvation Solutions';
+
+ const mailto='mailto:?bcc='+encodeURIComponent(emails.join(';'))+
+   '&subject='+encodeURIComponent(subj)+
+   '&body='+encodeURIComponent(finalBody);
+
+ window.location.href=mailto;
+ alert('Outlook draft prepared for '+emails.length+' recipient(s). Review the BCC recipients and message, then press Send in Outlook.');
+}async function loadHistory(){try{let r=await api('GET_CAMPAIGNS'),a=r.campaigns||[];hist.innerHTML=a.length?a.map(x=>`<tr><td>${esc(x.dateSent||'—')}</td><td>${esc(x.campaignName||x.name||'—')}</td><td>${esc(x.subject||'—')}</td><td>${esc(x.recipientCount||'—')}</td><td>${esc(x.sent||0)}</td><td>${esc(x.failed||0)}</td></tr>`).join(''):'<tr><td colspan="6" class="empty">No sent campaigns yet.</td></tr>'}catch(e){hist.innerHTML='<tr><td colspan="6" class="empty">'+esc(e.message)+'</td></tr>'}}
 
 function updateMetrics(){
  mGuests.textContent=guests.length; mSubs.textContent=guests.filter(g=>(g.status||g.emailStatus||'Subscribed')==='Subscribed').length;
