@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Salvation Solutions CRM</title>
-<meta name="crm-build" content="outlook-graph-v3-tdz-fixed">
+<meta name="crm-build" content="outlook-graph-v4-msal-cdn-fixed">
 <style>
 :root{
   --nav:#263b78; --nav2:#1f3269; --ink:#17254c; --muted:#6b7693;
@@ -44,7 +44,12 @@ button,input,select,textarea{font:inherit} button{cursor:pointer}
 .preview{background:#eee;border-radius:10px;padding:16px}.mail{max-width:540px;margin:auto;background:white}.mailhead{background:#263b78;color:white;padding:22px;text-align:center;font-weight:900}.mailbody{padding:20px;line-height:1.6}.cta{display:inline-block;background:#263b78;color:white;padding:9px 14px;border-radius:7px;margin-top:10px}
 @media(max-width:950px){.eGrid{grid-template-columns:1fr}}
 </style>
-<script src="https://alcdn.msauth.net/browser/2.38.4/js/msal-browser.min.js"></script></head>
+<script type="text/javascript" src="https://alcdn.msauth.net/browser/2.35.0/js/msal-browser.min.js"></script>
+<script type="text/javascript">
+if(typeof msal==='undefined'){
+ document.write('<script type="text/javascript" src="https://alcdn.msftauth.net/browser/2.35.0/js/msal-browser.min.js"><\/script>');
+}
+</script></head>
 <body>
 <div class="app">
   <aside class="sidebar">
