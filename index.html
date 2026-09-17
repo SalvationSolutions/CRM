@@ -54,7 +54,7 @@ button,input,select,textarea{font:inherit} button{cursor:pointer}
         <div class="card metric"><span>Total Guests</span><b id="mGuests">0</b></div>
         <div class="card metric"><span>Email Subscribers</span><b id="mSubs">0</b></div>
         <div class="card metric"><span>Campaigns Sent</span><b id="mSent">0</b></div>
-        <div class="card metric"><span>Outlook</span><b style="font-size:18px" id="mOutlook">Not configured</b></div>
+        <div class="card metric"><span>Email Sender</span><b style="font-size:18px" id="mOutlook">Not configured</b></div>
       </div>
       <div class="card panel">
         <div class="panel-head"><h2>Recent Guests</h2><button class="btn" onclick="showTab('guests')">View database</button></div>
@@ -71,15 +71,15 @@ button,input,select,textarea{font:inherit} button{cursor:pointer}
     </section>
 
     <section id="email" class="section">
-      <div class="topbar"><div><h1>Email Blast</h1><p>Prepare selected recipients, subject and message, then hand off to your personal Outlook account for final sending.</p></div></div>
+      <div class="topbar"><div><h1>Email Blast</h1><p>Create and send email campaigns directly through the Google Apps Script backend.</p></div><div class="actions"></div></div>
       <div class="card">
         <div class="form-grid">
           <label>Campaign Name<input id="campaignName" placeholder="September SME Outreach"></label>
           <label>Recipients<select id="recipientMode"><option value="selected">Selected guests</option><option value="subscribed">All subscribed guests</option></select></label>
           <label class="full">Subject<input id="subject" placeholder="IT solutions built for growing businesses"></label>
           <label class="full">Message<textarea id="message" rows="12" placeholder="Write your email message here…"></textarea></label>
-          <div class="full notice"><b>Personal Outlook mode:</b> the CRM does not store your Outlook password and does not require Entra. Click <b>Open in Outlook</b> to prepare the email. Recipients are placed in BCC for privacy. Review the draft in Outlook, confirm you are signed in as <b>salvationsolutions@outlook.com</b>, then press Send yourself.</div>
-          <div class="full actions"><button class="btn" onclick="previewEmail()">Preview</button><button class="btn primary" onclick="sendBlast()">Open in Outlook</button></div>
+          <div class="full notice"><b>Greek To Go-style sending:</b> Email Blast is sent by the Google account that authorizes the Apps Script. The sender display name is <b>Salvation Solutions</b>. Sent and failed deliveries are recorded by the backend in Campaigns and EmailLog.</div>
+          <div class="full actions"><button class="btn" onclick="previewEmail()">Preview</button><button class="btn primary" onclick="sendBlast()">Send Email Blast</button></div>
         </div>
       </div>
     </section>
@@ -152,10 +152,11 @@ function previewEmail(){
  const w=window.open('','_blank');w.document.write(`<title>Email Preview</title><div style="font-family:Arial;max-width:700px;margin:40px auto"><h2>${esc(subject.value||'(No subject)')}</h2><hr><div style="white-space:pre-wrap;line-height:1.6">${esc(message.value)}</div></div>`);
 }
 async function sendBlast(){
- const subjectText=subject.value.trim(), bodyText=message.value.trim();
- if(!subjectText||!bodyText)return alert('Subject and message are required.');
-
+ const subjectText=subject.value.trim();
+ const messageText=message.value.trim();
  const mode=recipientMode.value;
+ if(!subjectText||!messageText)return alert('Subject and message are required.');
+
  let recipients=[];
  if(mode==='subscribed'){
    recipients=guests.filter(g=>(g.status||g.emailStatus||'Subscribed')==='Subscribed' && g.email);
@@ -164,35 +165,36 @@ async function sendBlast(){
  }
  if(!recipients.length)return alert(mode==='selected'?'Select at least one guest in Guest Database.':'No subscribed guests with email addresses were found.');
 
- const emails=[...new Set(recipients.map(g=>String(g.email).trim()).filter(Boolean))];
- const campaign={
-   id:'CMP-'+Date.now(),
-   name:campaignName.value.trim()||'Outlook Campaign',
-   subject:subjectText,
-   recipientCount:emails.length,
-   recipients:emails,
-   sender:'salvationsolutions@outlook.com',
-   preparedAt:new Date().toISOString(),
-   status:'PREPARED_IN_OUTLOOK'
- };
+ const ids=recipients.map((g,i)=>String(g.id||g.email||i));
+ if(!confirm('Send this email blast to '+recipients.length+' recipient(s) now?'))return;
 
- // Record the handoff in Google Sheets when the backend supports LOG_OUTLOOK_HANDOFF.
- // Failure to log must not prevent the user from opening Outlook.
- try{ await api('LOG_OUTLOOK_HANDOFF',{campaign}); }catch(e){ console.warn('Campaign logging unavailable:',e.message); }
+ const btn=event && event.target ? event.target : null;
+ if(btn){btn.disabled=true;btn.textContent='Sending…';}
 
- // Use BCC so recipients do not see one another.
- const mailto='mailto:?bcc='+encodeURIComponent(emails.join(';'))+
-   '&subject='+encodeURIComponent(subjectText)+
-   '&body='+encodeURIComponent(bodyText);
-
- // mailto opens the user's configured mail handler (Outlook if configured).
- window.location.href=mailto;
-
- alert('Outlook draft prepared for '+emails.length+' recipient(s). Review the BCC list and message in Outlook, then press Send. The CRM does not send the email automatically.');
+ try{
+   const r=await api('SEND_EMAIL_BLAST',{
+     campaign:{
+       name:campaignName.value.trim()||'Salvation Solutions Campaign',
+       subject:subjectText,
+       message:messageText,
+       recipientMode:mode,
+       selectedIds:ids,
+       senderName:'Salvation Solutions'
+     }
+   });
+   const sent=Number(r.sent||0), failed=Number(r.failed||0);
+   alert('Email Blast complete.\n\nSent: '+sent+'\nFailed: '+failed);
+   if(sent>0){campaignName.value='';subject.value='';message.value='';selected.clear();}
+   await loadGuests();
+ }catch(e){
+   alert('Email Blast failed: '+e.message);
+ }finally{
+   if(btn){btn.disabled=false;btn.textContent='Send Email Blast';}
+ }
 }
 function updateMetrics(){
  mGuests.textContent=guests.length; mSubs.textContent=guests.filter(g=>(g.status||g.emailStatus||'Subscribed')==='Subscribed').length;
- mOutlook.textContent='Personal Outlook';
+ mOutlook.textContent='Apps Script';
  if(guests.length){recentGuests.innerHTML=guests.slice(0,5).map(g=>`<div style="padding:10px 0;border-bottom:1px solid var(--line)"><b>${esc(g.name||[g.firstName,g.lastName].filter(Boolean).join(' ')||'Guest')}</b><div style="color:var(--muted);font-size:13px">${esc(g.company||'')} ${g.email?'· '+esc(g.email):''}</div></div>`).join('')}
 }
 updateMetrics();
