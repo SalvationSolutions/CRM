@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Salvation Solutions CRM</title>
-<meta name="crm-build" content="outlook-graph-v5-auth-single-flight">
+<meta name="crm-build" content="outlook-graph-v6-popup-recovery">
 <style>
 :root{
   --nav:#263b78; --nav2:#1f3269; --ink:#17254c; --muted:#6b7693;
@@ -282,7 +282,7 @@ async function connectOutlook(){
  if(outlookInteractivePromise) return outlookInteractivePromise;
  outlookInteractivePromise=(async()=>{
   try{
-   const r=await app.loginPopup({scopes:OUTLOOK_SCOPES,prompt:'select_account'});
+   const r=await app.loginPopup({scopes:OUTLOOK_SCOPES,prompt:'select_account',overrideInteractionInProgress:true});
    app.setActiveAccount(r.account);outlookUI(r.account);
    alert('Outlook connected successfully.');
    return r.account;
@@ -299,15 +299,12 @@ async function ensureOutlookConnected(){
 }
 async function graphToken(){
  const a=await ensureOutlookConnected(),app=getOutlookMsal();
- try{return (await app.acquireTokenSilent({scopes:OUTLOOK_SCOPES,account:a})).accessToken;}
- catch(e){
-  if(outlookInteractivePromise) await outlookInteractivePromise;
-  outlookInteractivePromise=app.acquireTokenPopup({scopes:OUTLOOK_SCOPES,account:a});
-  try{return (await outlookInteractivePromise).accessToken;}
-  finally{outlookInteractivePromise=null;}
+ try{
+  return (await app.acquireTokenSilent({scopes:OUTLOOK_SCOPES,account:a})).accessToken;
+ }catch(e){
+  throw new Error('Microsoft needs a fresh authorization. Click Connect Outlook once, finish the Microsoft window, then send again.');
  }
 }
-function graphBody(o){const msg=esc(o.message||'').replace(/\n/g,'<br>'),ct=String(ctaText?.value||''),ln=String(ctaLink?.value||'');return '<div style="font-family:Arial,sans-serif;line-height:1.6"><p><b>Dear '+esc(o.g.firstName||'')+',</b></p><p>'+msg+'</p>'+(ct&&ln?'<p><a href="'+esc(ln)+'">'+esc(ct)+'</a></p>':'')+'<p>Regards,<br><b>Salvation Solutions</b></p></div>'}
 async function graphSendMail(o){const t=await graphToken();const r=await fetch('https://graph.microsoft.com/v1.0/me/sendMail',{method:'POST',headers:{Authorization:'Bearer '+t,'Content-Type':'application/json'},body:JSON.stringify({message:{subject:o.subject,body:{contentType:'HTML',content:graphBody(o)},toRecipients:[{emailAddress:{address:o.g.email}}]},saveToSentItems:true})});if(!r.ok){let x='HTTP '+r.status;try{let j=await r.json();x=j?.error?.message||x}catch(e){}throw new Error(x)}}
 async function testOutlookDirect(){try{const a=await ensureOutlookConnected();await graphSendMail({g:{email:a.username,firstName:'Salvation Solutions'},subject:'Salvation Solutions CRM — Direct Outlook Test',message:'This test email was sent directly from the CRM using Microsoft Graph.'});alert('Test email sent directly. Check Outlook Sent Items.')}catch(e){alert('Test failed: '+e.message)}}
 document.addEventListener('DOMContentLoaded',initOutlook);
