@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Salvation Solutions CRM</title>
-<meta name="crm-build" content="outlook-graph-v6-popup-recovery">
+<meta name="crm-build" content="outlook-graph-v7-redirect-only">
 <style>
 :root{
   --nav:#263b78; --nav2:#1f3269; --ink:#17254c; --muted:#6b7693;
@@ -157,7 +157,7 @@ let guests=[], selected=new Set();
 var outlookAccount=null;
 var outlookMsal=null;
 var outlookReadyPromise=null;
-var outlookInteractivePromise=null;
+
 
 function showTab(id){
  document.querySelectorAll('.section').forEach(x=>x.classList.toggle('active',x.id===id));
@@ -248,7 +248,7 @@ function getOutlookMsal(){
  if(typeof msal==='undefined') throw new Error('Microsoft authentication library did not load. Refresh the page and try again.');
  outlookMsal=new msal.PublicClientApplication({
   auth:{clientId:OUTLOOK_CLIENT_ID,authority:'https://login.microsoftonline.com/consumers',redirectUri:'https://salvationsolutions.github.io/CRM/'},
-  cache:{cacheLocation:'localStorage'}
+  cache:{cacheLocation:'sessionStorage'}
  });
  return outlookMsal;
 }
@@ -279,31 +279,33 @@ async function connectOutlook(){
  const app=getOutlookMsal();
  const existing=app.getActiveAccount()||app.getAllAccounts()[0];
  if(existing){app.setActiveAccount(existing);outlookUI(existing);return existing;}
- if(outlookInteractivePromise) return outlookInteractivePromise;
- outlookInteractivePromise=(async()=>{
-  try{
-   const r=await app.loginPopup({scopes:OUTLOOK_SCOPES,prompt:'select_account',overrideInteractionInProgress:true});
-   app.setActiveAccount(r.account);outlookUI(r.account);
-   alert('Outlook connected successfully.');
-   return r.account;
-  }finally{outlookInteractivePromise=null;}
- })();
- try{return await outlookInteractivePromise}catch(e){alert('Outlook connection failed: '+e.message);throw e}
+ await app.loginRedirect({scopes:OUTLOOK_SCOPES,prompt:'select_account'});
 }
 async function ensureOutlookConnected(){
  await initOutlook();
  const app=getOutlookMsal();
- let a=app.getActiveAccount()||app.getAllAccounts()[0];
- if(!a) a=await connectOutlook();
- return a;
+ const a=app.getActiveAccount()||app.getAllAccounts()[0];
+ if(!a){
+  await connectOutlook();
+  throw new Error('Outlook sign-in started. Complete Microsoft sign-in and return to the CRM.');
+ }
+ app.setActiveAccount(a);outlookUI(a);return a;
 }
 async function graphToken(){
  const a=await ensureOutlookConnected(),app=getOutlookMsal();
- try{
-  return (await app.acquireTokenSilent({scopes:OUTLOOK_SCOPES,account:a})).accessToken;
- }catch(e){
-  throw new Error('Microsoft needs a fresh authorization. Click Connect Outlook once, finish the Microsoft window, then send again.');
+ try{return (await app.acquireTokenSilent({scopes:OUTLOOK_SCOPES,account:a})).accessToken;}
+ catch(e){
+  await app.acquireTokenRedirect({scopes:OUTLOOK_SCOPES,account:a});
+  throw new Error('Microsoft authorization started. Complete it and return to the CRM.');
  }
+}
+function graphBody(o){
+ const msg=esc(o.message||'').replace(/\n/g,'<br>');
+ const ct=String(document.getElementById('ctaText')?.value||'');
+ const ln=String(document.getElementById('ctaLink')?.value||'');
+ return '<div style="font-family:Arial,sans-serif;line-height:1.6"><p><b>Dear '+esc(o.g.firstName||'')+',</b></p><p>'+msg+'</p>'+
+ (ct&&ln?'<p><a href="'+esc(ln)+'">'+esc(ct)+'</a></p>':'')+
+ '<p>Regards,<br><b>Salvation Solutions</b></p></div>';
 }
 async function graphSendMail(o){const t=await graphToken();const r=await fetch('https://graph.microsoft.com/v1.0/me/sendMail',{method:'POST',headers:{Authorization:'Bearer '+t,'Content-Type':'application/json'},body:JSON.stringify({message:{subject:o.subject,body:{contentType:'HTML',content:graphBody(o)},toRecipients:[{emailAddress:{address:o.g.email}}]},saveToSentItems:true})});if(!r.ok){let x='HTTP '+r.status;try{let j=await r.json();x=j?.error?.message||x}catch(e){}throw new Error(x)}}
 async function testOutlookDirect(){try{const a=await ensureOutlookConnected();await graphSendMail({g:{email:a.username,firstName:'Salvation Solutions'},subject:'Salvation Solutions CRM — Direct Outlook Test',message:'This test email was sent directly from the CRM using Microsoft Graph.'});alert('Test email sent directly. Check Outlook Sent Items.')}catch(e){alert('Test failed: '+e.message)}}
