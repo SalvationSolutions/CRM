@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Salvation Solutions CRM</title>
-<meta name="crm-build" content="outlook-graph-v4-msal-cdn-fixed">
+<meta name="crm-build" content="outlook-graph-v5-auth-single-flight">
 <style>
 :root{
   --nav:#263b78; --nav2:#1f3269; --ink:#17254c; --muted:#6b7693;
@@ -156,6 +156,8 @@ const HARDCODED_BACKEND='https://script.google.com/macros/s/AKfycbwHYEJB14Fc00X1
 let guests=[], selected=new Set();
 var outlookAccount=null;
 var outlookMsal=null;
+var outlookReadyPromise=null;
+var outlookInteractivePromise=null;
 
 function showTab(id){
  document.querySelectorAll('.section').forEach(x=>x.classList.toggle('active',x.id===id));
@@ -258,14 +260,53 @@ function outlookUI(a){
  if(typeof mOutlook!=='undefined')mOutlook.textContent=a?(a.username||'Connected'):'Not connected';
 }
 async function initOutlook(){
- try{const outlookMsal=getOutlookMsal();const r=await outlookMsal.handleRedirectPromise();if(r?.account)outlookMsal.setActiveAccount(r.account);
- const a=outlookMsal.getActiveAccount()||outlookMsal.getAllAccounts()[0]||null;if(a)outlookMsal.setActiveAccount(a);outlookUI(a)}catch(e){console.error(e);outlookUI(null)}
+ if(outlookReadyPromise) return outlookReadyPromise;
+ outlookReadyPromise=(async()=>{
+  try{
+   const app=getOutlookMsal();
+   const r=await app.handleRedirectPromise();
+   if(r?.account) app.setActiveAccount(r.account);
+   const a=app.getActiveAccount()||app.getAllAccounts()[0]||null;
+   if(a) app.setActiveAccount(a);
+   outlookUI(a);
+   return a;
+  }catch(e){console.error(e);outlookUI(null);return null;}
+ })();
+ return outlookReadyPromise;
 }
 async function connectOutlook(){
- try{const outlookMsal=getOutlookMsal();const r=await outlookMsal.loginPopup({scopes:OUTLOOK_SCOPES,prompt:'select_account'});outlookMsal.setActiveAccount(r.account);outlookUI(r.account);alert('Outlook connected successfully.')}catch(e){alert('Outlook connection failed: '+e.message)}
+ await initOutlook();
+ const app=getOutlookMsal();
+ const existing=app.getActiveAccount()||app.getAllAccounts()[0];
+ if(existing){app.setActiveAccount(existing);outlookUI(existing);return existing;}
+ if(outlookInteractivePromise) return outlookInteractivePromise;
+ outlookInteractivePromise=(async()=>{
+  try{
+   const r=await app.loginPopup({scopes:OUTLOOK_SCOPES,prompt:'select_account'});
+   app.setActiveAccount(r.account);outlookUI(r.account);
+   alert('Outlook connected successfully.');
+   return r.account;
+  }finally{outlookInteractivePromise=null;}
+ })();
+ try{return await outlookInteractivePromise}catch(e){alert('Outlook connection failed: '+e.message);throw e}
 }
-async function ensureOutlookConnected(){const outlookMsal=getOutlookMsal();let a=outlookMsal.getActiveAccount()||outlookMsal.getAllAccounts()[0];if(!a){const r=await outlookMsal.loginPopup({scopes:OUTLOOK_SCOPES});a=r.account;outlookMsal.setActiveAccount(a);outlookUI(a)}return a}
-async function graphToken(){const a=await ensureOutlookConnected();try{return(await outlookMsal.acquireTokenSilent({scopes:OUTLOOK_SCOPES,account:a})).accessToken}catch(e){return(await outlookMsal.acquireTokenPopup({scopes:OUTLOOK_SCOPES,account:a})).accessToken}}
+async function ensureOutlookConnected(){
+ await initOutlook();
+ const app=getOutlookMsal();
+ let a=app.getActiveAccount()||app.getAllAccounts()[0];
+ if(!a) a=await connectOutlook();
+ return a;
+}
+async function graphToken(){
+ const a=await ensureOutlookConnected(),app=getOutlookMsal();
+ try{return (await app.acquireTokenSilent({scopes:OUTLOOK_SCOPES,account:a})).accessToken;}
+ catch(e){
+  if(outlookInteractivePromise) await outlookInteractivePromise;
+  outlookInteractivePromise=app.acquireTokenPopup({scopes:OUTLOOK_SCOPES,account:a});
+  try{return (await outlookInteractivePromise).accessToken;}
+  finally{outlookInteractivePromise=null;}
+ }
+}
 function graphBody(o){const msg=esc(o.message||'').replace(/\n/g,'<br>'),ct=String(ctaText?.value||''),ln=String(ctaLink?.value||'');return '<div style="font-family:Arial,sans-serif;line-height:1.6"><p><b>Dear '+esc(o.g.firstName||'')+',</b></p><p>'+msg+'</p>'+(ct&&ln?'<p><a href="'+esc(ln)+'">'+esc(ct)+'</a></p>':'')+'<p>Regards,<br><b>Salvation Solutions</b></p></div>'}
 async function graphSendMail(o){const t=await graphToken();const r=await fetch('https://graph.microsoft.com/v1.0/me/sendMail',{method:'POST',headers:{Authorization:'Bearer '+t,'Content-Type':'application/json'},body:JSON.stringify({message:{subject:o.subject,body:{contentType:'HTML',content:graphBody(o)},toRecipients:[{emailAddress:{address:o.g.email}}]},saveToSentItems:true})});if(!r.ok){let x='HTTP '+r.status;try{let j=await r.json();x=j?.error?.message||x}catch(e){}throw new Error(x)}}
 async function testOutlookDirect(){try{const a=await ensureOutlookConnected();await graphSendMail({g:{email:a.username,firstName:'Salvation Solutions'},subject:'Salvation Solutions CRM — Direct Outlook Test',message:'This test email was sent directly from the CRM using Microsoft Graph.'});alert('Test email sent directly. Check Outlook Sent Items.')}catch(e){alert('Test failed: '+e.message)}}
