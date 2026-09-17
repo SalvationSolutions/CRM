@@ -97,7 +97,39 @@ button,input,select,textarea{font:inherit} button{cursor:pointer}
 <div id="ep-outbox" class="ePane"><div class="card"><div class="panel-head"><h2>Outbox</h2><span id="oq" class="badge">0 queued</span></div><div id="olist" class="empty">No emails queued.</div><div class="actions"><button class="btn danger" onclick="outbox=[];renderOut()">Clear Outbox</button><button class="btn primary" onclick="sendQueue(event)">Send All via Outlook</button></div></div></div>
 <div id="ep-history" class="ePane"><div class="card"><div class="panel-head"><h2>Sent History</h2><button class="btn" onclick="loadHistory()">↻ Refresh</button></div><div class="table-wrap"><table><thead><tr><th>Date</th><th>Campaign</th><th>Subject</th><th>Recipients</th><th>Sent</th><th>Failed</th></tr></thead><tbody id="hist"><tr><td colspan="6" class="empty">No campaign history loaded.</td></tr></tbody></table></div></div></div>
     </section>
-  </main>
+  
+<div id="outlookConfigPanel" style="margin-top:18px;background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:20px;">
+  <div style="display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap;">
+    <div>
+      <h3 style="margin:0 0 6px;">Outlook Configuration</h3>
+      <div style="color:#64748b;font-size:13px;">Configure the Outlook account used when handing campaigns to Outlook.</div>
+    </div>
+    <span id="outlookStatus" style="padding:7px 11px;border-radius:999px;background:#f1f5f9;color:#475569;font-size:12px;font-weight:700;">Not tested</span>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:18px;">
+    <label style="font-size:12px;font-weight:700;color:#334155;">Sender Name
+      <input id="outlookSenderName" value="Salvation Solutions" style="width:100%;margin-top:6px;padding:11px;border:1px solid #cbd5e1;border-radius:10px;box-sizing:border-box;">
+    </label>
+    <label style="font-size:12px;font-weight:700;color:#334155;">Outlook Email
+      <input id="outlookEmail" type="email" value="salvationsolutions@outlook.com" style="width:100%;margin-top:6px;padding:11px;border:1px solid #cbd5e1;border-radius:10px;box-sizing:border-box;">
+    </label>
+    <label style="font-size:12px;font-weight:700;color:#334155;">Provider
+      <input value="Microsoft Outlook" readonly style="width:100%;margin-top:6px;padding:11px;border:1px solid #cbd5e1;border-radius:10px;box-sizing:border-box;background:#f8fafc;">
+    </label>
+    <label style="font-size:12px;font-weight:700;color:#334155;">Connection Mode
+      <input value="Personal Outlook — device handoff" readonly style="width:100%;margin-top:6px;padding:11px;border:1px solid #cbd5e1;border-radius:10px;box-sizing:border-box;background:#f8fafc;">
+    </label>
+  </div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;">
+    <button type="button" onclick="saveOutlookSettings()" style="padding:10px 14px;border:0;border-radius:10px;background:#0f172a;color:white;font-weight:700;cursor:pointer;">Save Outlook Settings</button>
+    <button type="button" onclick="testOutlookConfiguration()" style="padding:10px 14px;border:1px solid #cbd5e1;border-radius:10px;background:white;color:#0f172a;font-weight:700;cursor:pointer;">Test Outlook</button>
+  </div>
+  <div style="margin-top:12px;color:#64748b;font-size:12px;line-height:1.5;">
+    No Outlook password is stored. This configuration opens a prepared message in the device's Outlook/default mail handler. Automatic background sending requires Microsoft OAuth/Graph authorization.
+  </div>
+</div>
+
+</main>
 </div>
 
 <div class="modal" id="guestModal"><div class="modal-card">
@@ -190,7 +222,8 @@ function sendQueue(ev){
 
  let finalBody=body;
  if(cta && link) finalBody += '\n\n'+cta+': '+link;
- finalBody += '\n\nRegards,\nSalvation Solutions';
+ const outlookCfg=loadOutlookSettings();
+ finalBody += '\n\nRegards,\n'+(outlookCfg.senderName||'Salvation Solutions');
 
  const mailto='mailto:?bcc='+encodeURIComponent(emails.join(';'))+
    '&subject='+encodeURIComponent(subj)+
@@ -207,5 +240,40 @@ function updateMetrics(){
 }
 updateMetrics();
 </script>
+
+<script>
+function loadOutlookSettings(){
+  let cfg={senderName:'Salvation Solutions',email:'salvationsolutions@outlook.com'};
+  try{
+    const saved=JSON.parse(localStorage.getItem('salvationOutlookSettings')||'{}');
+    cfg={...cfg,...saved};
+  }catch(e){}
+  const n=document.getElementById('outlookSenderName');
+  const m=document.getElementById('outlookEmail');
+  if(n)n.value=cfg.senderName;
+  if(m)m.value=cfg.email;
+  return cfg;
+}
+function saveOutlookSettings(){
+  const senderName=(document.getElementById('outlookSenderName')?.value||'Salvation Solutions').trim();
+  const email=(document.getElementById('outlookEmail')?.value||'').trim();
+  if(!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return alert('Enter a valid Outlook email address.');
+  localStorage.setItem('salvationOutlookSettings',JSON.stringify({senderName,email}));
+  const s=document.getElementById('outlookStatus');
+  if(s){s.textContent='Configured';s.style.background='#ecfdf5';s.style.color='#047857';}
+  alert('Outlook settings saved on this device.');
+}
+function testOutlookConfiguration(){
+  const cfg=loadOutlookSettings();
+  if(!cfg.email)return alert('Enter and save your Outlook email first.');
+  const s=document.getElementById('outlookStatus');
+  if(s){s.textContent='Outlook handoff ready';s.style.background='#ecfdf5';s.style.color='#047857';}
+  const subject='Salvation Solutions CRM — Outlook Test';
+  const body='This is a test draft from Salvation Solutions CRM. No message has been sent yet.';
+  window.location.href='mailto:'+encodeURIComponent(cfg.email)+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+}
+document.addEventListener('DOMContentLoaded',loadOutlookSettings);
+</script>
+
 </body>
 </html>
