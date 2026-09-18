@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Salvation Solutions CRM</title>
-<meta name="crm-build" content="outlook-graph-v10-login-gate">
+<meta name="crm-build" content="outlook-graph-v12-history-reliable">
 <style>
 :root{
   --nav:#263b78; --nav2:#1f3269; --ink:#17254c; --muted:#6b7693;
@@ -103,7 +103,13 @@ if(typeof msal==='undefined'){
 
   <main class="main">
     <section id="dashboard" class="section active">
-      <div class="topbar"><div><h1>Dashboard</h1><p>Guest relationship and Outlook campaign overview.</p></div><div class="actions"><button class="btn primary" onclick="openGuest()">+ Add Guest</button></div></div>
+      <div class="topbar"><div><h1>Dashboard</h1><p>Guest relationship and Outlook campaign overview.</p></div>
+<div class="actions" style="align-items:center">
+ <span id="gsConnBadge" class="badge gray">● Google Sheets: Checking…</span>
+ <span id="outlookConnBadge" class="badge gray">● Outlook: Checking…</span>
+ <button class="btn" onclick="checkAllConnections()">↻ Check Connections</button>
+ <button class="btn primary" onclick="openGuest()">+ Add Guest</button>
+</div></div>
       <div class="grid">
         <div class="card metric"><span>Total Guests</span><b id="mGuests">0</b></div>
         <div class="card metric"><span>Email Subscribers</span><b id="mSubs">0</b></div>
@@ -261,6 +267,41 @@ function saveSettings(){
  const c={senderName:sName.value.trim(),senderEmail:sEmail.value.trim(),tenantId:sTenant.value.trim(),clientId:sClient.value.trim(),backend:HARDCODED_BACKEND};
  localStorage.setItem(CONFIG_KEY,JSON.stringify(c)); closeModal('settingsModal'); updateMetrics();
 }
+
+function setConnBadge(id,ok,text){
+ const el=document.getElementById(id); if(!el)return;
+ el.textContent='● '+text;
+ el.className='badge'+(ok?'':' gray');
+ el.style.background=ok?'#eaf6ef':'#fff1f1';
+ el.style.color=ok?'#1f8a5b':'#b42318';
+}
+async function checkGoogleSheetsConnection(){
+ setConnBadge('gsConnBadge',false,'Google Sheets: Checking…');
+ try{
+  const r=await api('PING');
+  if(r&&r.ok){setConnBadge('gsConnBadge',true,'Google Sheets: Connected');return true;}
+  throw new Error('No response');
+ }catch(e){
+  setConnBadge('gsConnBadge',false,'Google Sheets: Disconnected');return false;
+ }
+}
+async function checkOutlookConnection(){
+ const el=document.getElementById('outlookConnBadge');
+ if(el){el.textContent='● Outlook: Checking…';el.className='badge gray';el.style.background='#eef1f6';el.style.color='#68738d';}
+ try{
+  await initOutlook();
+  const app=getOutlookMsal();
+  const a=app.getActiveAccount()||app.getAllAccounts()[0]||null;
+  if(a){setConnBadge('outlookConnBadge',true,'Outlook: Connected');outlookUI(a);return true;}
+  setConnBadge('outlookConnBadge',false,'Outlook: Not connected');return false;
+ }catch(e){
+  setConnBadge('outlookConnBadge',false,'Outlook: Disconnected');return false;
+ }
+}
+async function checkAllConnections(){
+ await Promise.all([checkGoogleSheetsConnection(),checkOutlookConnection()]);
+}
+
 async function testConnection(){
  statusText.textContent='Testing…'; statusDot.className='dot';
  try{await api('PING');statusText.textContent='Backend connected';statusDot.className='dot ok'}catch(e){statusText.textContent=e.message}
@@ -299,6 +340,27 @@ function live(){let g=chosen()[0]||guests[0]||{},m=pers(message.value,g),ct=ctaT
 function applyTemplate(){let d={intro:['Helping {{company}} simplify IT operations','Hi {{first_name}},\n\nSalvation Solutions helps growing businesses improve IT asset management, service delivery and digital operations. I would be glad to discuss how we can support {{company}}.','Explore Our Services'],follow:['Following up — Salvation Solutions','Hi {{first_name}},\n\nI wanted to follow up regarding {{company}} and your interest in {{service_interest}}. Let me know if you would like to schedule a short discussion.','Let’s Talk'],fnb:['Smarter IT solutions for your F&B operations','Hi {{first_name}},\n\nWe help food and beverage businesses streamline POS, inventory, CRM and operational reporting. I would be happy to show you what this could look like for {{company}}.','View F&B Solutions'],ai:['Practical AI & automation for {{company}}','Hi {{first_name}},\n\nWe can help identify practical AI and automation opportunities that reduce repetitive work and improve visibility across your operations.','Explore Automation'],re:['Checking in from Salvation Solutions','Hi {{first_name}},\n\nIt has been a while since we connected. If {{service_interest}} is still a priority for {{company}}, I would be happy to reconnect.','Reconnect']};let x=d[emailTemplate.value];if(x){subject.value=x[0];message.value=x[1];ctaText.value=x[2]}live()}
 function queue(){let a=chosen();if(!a.length)return alert('Select at least one guest.');if(!subject.value.trim()||!message.value.trim())return alert('Subject and message are required.');outbox=a.map(g=>({id:String(g.id||g.email),g,subject:pers(subject.value,g),message:pers(message.value,g)}));document.querySelectorAll('.eTab')[1].click()}
 function renderOut(){oq.textContent=outbox.length+' queued';olist.innerHTML=outbox.length?outbox.map((o,i)=>`<div class="outbox-item" style="padding:12px;border-bottom:1px solid var(--line)"><b>${esc(o.g.firstName+' '+o.g.lastName)}</b> · ${esc(o.g.email)}<br><small>${esc(o.subject)}</small><button class="btn danger" style="float:right;padding:4px 8px" onclick="outbox.splice(${i},1);renderOut()">Remove</button></div>`).join(''):'<div class="empty">No emails queued.</div>'}
+
+const CRM_HISTORY_KEY='salvation_crm_sent_history_v1';
+function localCampaigns(){
+ try{return JSON.parse(localStorage.getItem(CRM_HISTORY_KEY)||'[]')}catch(e){return []}
+}
+function saveLocalCampaign(c){
+ const a=localCampaigns().filter(x=>x.campaignId!==c.campaignId);
+ a.unshift(c);
+ localStorage.setItem(CRM_HISTORY_KEY,JSON.stringify(a.slice(0,500)));
+}
+function renderCampaignHistory(a){
+ hist.innerHTML=a.length?a.map(x=>`<tr>
+  <td>${esc(x.dateSent||'—')}</td>
+  <td>${esc(x.campaignName||x.name||'Outlook Campaign')}</td>
+  <td>${esc(x.subject||'—')}</td>
+  <td>${esc(String(x.recipientCount??0))}</td>
+  <td>${esc(String(x.sent??0))}</td>
+  <td>${esc(String(x.failed??0))}</td>
+ </tr>`).join(''):'<tr><td colspan="6" class="empty">No sent campaigns yet.</td></tr>';
+}
+
 async function sendQueue(ev){
  if(!outbox.length)return alert('Outbox is empty.');
  const btn=ev?.currentTarget;
@@ -324,21 +386,59 @@ async function sendQueue(ev){
    }catch(logErr){console.warn('EmailLog failed:',logErr);}
   }
 
-  await api('LOG_CAMPAIGN',{campaign:{
-   campaignId,campaignName,subject:campaignSubject,
-   recipientCount:total,sent,failed,
+  const summary={
+   campaignId,campaignName,subject:campaignSubject,recipientCount:total,sent,failed,
+   dateSent:new Date().toLocaleString(),
    sender:(outlookAccount?.username||document.getElementById('outlookEmail')?.value||'Salvation Solutions / Outlook')
-  }});
+  };
+
+  // Save locally first so a successful Outlook send can never disappear from Sent History.
+  saveLocalCampaign(summary);
+
+  let sheetsLogged=true;
+  try{
+   const lr=await api('LOG_CAMPAIGN',{campaign:summary});
+   if(!lr||lr.ok===false) throw new Error(lr?.error||'Campaign log failed');
+  }catch(logErr){
+   sheetsLogged=false;
+   console.error('Campaigns sheet log failed:',logErr);
+  }
 
   await loadHistory();
   mSent.textContent=sent;
-  alert('Outlook direct send complete. Sent: '+sent+' · Failed: '+failed+(errs.length?'\n'+errs.slice(0,5).join('\n'):''));
+  alert('Outlook direct send complete. Sent: '+sent+' · Failed: '+failed+
+    (sheetsLogged?' · History saved to Google Sheets':' · Sent History saved locally; Google Sheets logging failed')+
+    (errs.length?'\n'+errs.slice(0,5).join('\n'):''));
+
   outbox=failed?outbox.filter(o=>failedAddresses.has(o.g.email)):[];
   renderOut();
- }catch(e){alert('Outlook send/history failed: '+e.message);}
+ }catch(e){alert('Outlook send failed: '+e.message);}
  finally{if(btn){btn.disabled=false;btn.textContent='Send All via Outlook';}}
 }
-async function loadHistory(){try{let r=await api('GET_CAMPAIGNS'),a=r.campaigns||[];hist.innerHTML=a.length?a.map(x=>`<tr><td>${esc(x.dateSent||'—')}</td><td>${esc(x.campaignName||x.name||'—')}</td><td>${esc(x.subject||'—')}</td><td>${esc(x.recipientCount||'—')}</td><td>${esc(x.sent||0)}</td><td>${esc(x.failed||0)}</td></tr>`).join(''):'<tr><td colspan="6" class="empty">No sent campaigns yet.</td></tr>'}catch(e){hist.innerHTML='<tr><td colspan="6" class="empty">'+esc(e.message)+'</td></tr>'}}
+
+async function loadHistory(){
+ const local=localCampaigns();
+ try{
+  const r=await api('GET_CAMPAIGNS');
+  const remote=Array.isArray(r?.campaigns)?r.campaigns:[];
+  const merged=new Map();
+  [...local,...remote].forEach(x=>{
+   const key=x.campaignId||[x.dateSent,x.subject,x.recipientCount].join('|');
+   if(!merged.has(key)) merged.set(key,x);
+  });
+  const all=[...merged.values()].sort((x,y)=>{
+   const dx=Date.parse(x.dateSent||0)||0,dy=Date.parse(y.dateSent||0)||0;
+   return dy-dx;
+  });
+  renderCampaignHistory(all);
+ }catch(e){
+  if(local.length){
+   renderCampaignHistory(local);
+  }else{
+   hist.innerHTML='<tr><td colspan="6" class="empty">Sent History could not load: '+esc(e.message)+'</td></tr>';
+  }
+ }
+}
 
 function updateMetrics(){
  mGuests.textContent=guests.length; mSubs.textContent=guests.filter(g=>(g.status||g.emailStatus||'Subscribed')==='Subscribed').length;
@@ -369,6 +469,7 @@ function outlookUI(a){
  if(m)m.value=a?(a.username||'Connected'):'Not connected';
  if(s){s.textContent=a?'Connected':'Not connected';s.style.background=a?'#ecfdf5':'#f1f5f9';s.style.color=a?'#047857':'#475569';}
  if(typeof mOutlook!=='undefined')mOutlook.textContent=a?(a.username||'Connected'):'Not connected';
+  setConnBadge('outlookConnBadge',!!a,a?'Outlook: Connected':'Outlook: Not connected');
 }
 async function initOutlook(){
  if(outlookReadyPromise) return outlookReadyPromise;
@@ -449,7 +550,10 @@ async function graphSendMail(o){
  }
 }
 async function testOutlookDirect(){try{const a=await ensureOutlookConnected();await graphSendMail({g:{email:a.username,firstName:'Salvation Solutions'},subject:'Salvation Solutions CRM — Direct Outlook Test',message:'This test email was sent directly from the CRM using Microsoft Graph.'});alert('Test email sent directly. Check Outlook Sent Items.')}catch(e){alert('Test failed: '+e.message)}}
-document.addEventListener('DOMContentLoaded',initOutlook);
+document.addEventListener('DOMContentLoaded',async()=>{
+ await initOutlook();
+ checkAllConnections();
+});
 </script>
 </body>
 </html>
