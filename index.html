@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Salvation Solutions CRM</title>
-<meta name="crm-build" content="outlook-graph-v16-1-login-syntax-fixed">
+<meta name="crm-build" content="outlook-graph-v18-jarvis-voice">
 <style>
 :root{
   --nav:#263b78; --nav2:#1f3269; --ink:#17254c; --muted:#6b7693;
@@ -60,6 +60,36 @@ button,input,select,textarea{font:inherit} button{cursor:pointer}
 @media(max-width:980px){.logoutBtn{font-size:0;padding:11px}.logoutBtn:after{content:"↪";font-size:22px}}
 @media(max-width:640px){.loginCard{padding:27px 22px}.logoutBtn{position:fixed;right:10px;bottom:76px;width:48px;height:48px;border-radius:50%;background:#263b78;z-index:20}}
 
+
+/* JARVIS Assistant */
+.jarvis-shell{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(280px,.55fr);gap:14px}
+.jarvis-chat{background:#fff;border:1px solid #e5e9f2;border-radius:16px;overflow:hidden;box-shadow:0 5px 18px rgba(28,44,86,.05)}
+.jarvis-head{padding:18px 20px;background:linear-gradient(135deg,#17254c,#2d4b93);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.jarvis-title{display:flex;align-items:center;gap:12px}.jarvis-orb{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:#fff;color:#263b78;font-weight:950;box-shadow:0 0 0 6px rgba(255,255,255,.10)}
+.jarvis-head h3{margin:0;font-size:18px}.jarvis-head p{margin:3px 0 0;font-size:12px;opacity:.8}
+.jarvis-state{font-size:11px;font-weight:850;background:rgba(255,255,255,.14);padding:7px 10px;border-radius:999px}
+.jarvis-messages{height:440px;overflow:auto;padding:18px;background:#f7f9fd}
+.jmsg{max-width:82%;padding:11px 13px;border-radius:14px;margin:0 0 10px;line-height:1.5;font-size:13px;white-space:pre-wrap}
+.jmsg.jarvis{background:#fff;border:1px solid #e1e7f1;color:#17254c;border-top-left-radius:5px}
+.jmsg.user{background:#263b78;color:#fff;margin-left:auto;border-top-right-radius:5px}
+.jarvis-quick{display:flex;gap:7px;flex-wrap:wrap;padding:11px 14px 0;background:#fff}.jarvis-quick button{border:1px solid #dbe2ee;background:#fff;border-radius:999px;padding:7px 10px;font-size:11px;font-weight:800;color:#263b78}
+.jarvis-compose{display:flex;gap:8px;padding:13px;background:#fff}.jarvis-compose input{flex:1;border:1px solid #dbe2ee;border-radius:11px;padding:12px 13px;outline:none}.jarvis-compose button{border:0;border-radius:11px;background:#263b78;color:#fff;padding:0 18px;font-weight:850}
+.jarvis-panel{display:flex;flex-direction:column;gap:12px}.jarvis-card{background:#fff;border:1px solid #e5e9f2;border-radius:15px;padding:16px}.jarvis-card h4{margin:0 0 11px;color:#17254c}.jarvis-kpi{display:grid;grid-template-columns:1fr 1fr;gap:8px}.jarvis-kpi div{background:#f6f8fc;border-radius:10px;padding:11px}.jarvis-kpi b{display:block;font-size:20px;color:#263b78}.jarvis-kpi span{font-size:10px;color:#74809a;font-weight:800}
+.jarvis-note{font-size:11px;color:#6d7892;line-height:1.5}.jarvis-action{width:100%;border:1px solid #dbe2ee;background:#fff;border-radius:10px;padding:10px;margin-top:7px;text-align:left;color:#263b78;font-weight:800}
+@media(max-width:900px){.jarvis-shell{grid-template-columns:1fr}.jarvis-messages{height:360px}}
+
+
+.jarvis-shell{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(280px,.55fr);gap:14px}
+.jarvis-chat,.jarvis-card{background:#fff;border:1px solid #e5e9f2;border-radius:16px;overflow:hidden}
+.jarvis-head{padding:18px 20px;background:linear-gradient(135deg,#17254c,#2d4b93);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.jarvis-title{display:flex;align-items:center;gap:12px}.jarvis-orb{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:#fff;color:#263b78;font-weight:950}
+.jarvis-head h3{margin:0}.jarvis-head p{margin:3px 0 0;font-size:12px;opacity:.8}.jarvis-state,.jarvis-speak-toggle{font-size:11px;font-weight:850;background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.2);padding:7px 10px;border-radius:999px}
+.jarvis-messages{height:410px;overflow:auto;padding:18px;background:#f7f9fd}.jmsg{max-width:82%;padding:11px 13px;border-radius:14px;margin:0 0 10px;line-height:1.5;font-size:13px;white-space:pre-wrap}.jmsg.jarvis{background:#fff;border:1px solid #e1e7f1;color:#17254c}.jmsg.user{background:#263b78;color:#fff;margin-left:auto}
+.jarvis-quick{display:flex;gap:7px;flex-wrap:wrap;padding:11px 14px 0}.jarvis-quick button{border:1px solid #dbe2ee;background:#fff;border-radius:999px;padding:7px 10px;font-size:11px;font-weight:800;color:#263b78}
+.jarvis-compose{display:flex;gap:8px;padding:13px}.jarvis-compose input{flex:1;border:1px solid #dbe2ee;border-radius:11px;padding:12px}.jarvis-compose button{border:0;border-radius:11px;background:#263b78;color:#fff;padding:0 16px;font-weight:850}.jarvis-compose .mic{background:#eef2fb;color:#263b78;font-size:18px;min-width:50px}.jarvis-compose .mic.listening{background:#b42318;color:#fff;animation:jPulse 1.1s infinite}
+.jarvis-side{display:flex;flex-direction:column;gap:12px}.jarvis-card{padding:16px}.jarvis-card h4{margin:0 0 11px}.jarvis-kpi{display:grid;grid-template-columns:1fr 1fr;gap:8px}.jarvis-kpi div{background:#f6f8fc;border-radius:10px;padding:11px}.jarvis-kpi b{display:block;font-size:20px;color:#263b78}.jarvis-kpi span{font-size:10px;color:#74809a;font-weight:800}.jarvis-note{font-size:11px;color:#6d7892;line-height:1.5}
+@keyframes jPulse{50%{box-shadow:0 0 0 8px rgba(180,35,24,0)}}@media(max-width:900px){.jarvis-shell{grid-template-columns:1fr}.jarvis-messages{height:340px}}
+
 </style>
 <script type="text/javascript" src="https://alcdn.msauth.net/browser/2.35.0/js/msal-browser.min.js"></script>
 <script type="text/javascript">
@@ -95,6 +125,7 @@ if(typeof msal==='undefined'){
     <nav class="nav">
       <button class="active" data-tab="dashboard"><span class="ico">⌂</span><span class="label">Dashboard</span></button>
       <button data-tab="guests"><span class="ico">♙</span><span class="label">Guest Database</span></button>
+      <button data-tab="jarvis"><span class="ico">✦</span><span class="label">JARVIS Assistant</span></button>
       <button data-tab="email"><span class="ico">✉</span><span class="label">Email Blast</span></button>
     </nav>
     <button type="button" class="logoutBtn" onclick="crmLogout()">↪ <span>Sign Out</span></button>
@@ -127,6 +158,24 @@ if(typeof msal==='undefined'){
       <div class="card">
         <div class="toolbar"><input id="search" class="field grow" placeholder="Search name, company, email or phone…" oninput="renderGuests()"><select id="filterStatus" class="field" onchange="renderGuests()"><option value="">All contacts</option><option>Subscribed</option><option>Unsubscribed</option></select></div>
         <div class="table-wrap"><table><thead><tr><th><input type="checkbox" id="selectAll" onchange="toggleAll(this.checked)"></th><th>First Name</th><th>Last Name</th><th>Company</th><th>Email</th><th>Phone</th><th>Service Interest</th><th>Status</th><th>Added</th></tr></thead><tbody id="guestRows"></tbody></table></div>
+      </div>
+    </section>
+
+
+    <section id="jarvis" class="section">
+      <div class="topbar"><div><h1>JARVIS Assistant</h1><p>Voice-enabled Salvation Solutions CRM command center.</p></div><div class="actions"><span class="badge">🎙 Voice + Text</span></div></div>
+      <div class="jarvis-shell">
+        <div class="jarvis-chat">
+          <div class="jarvis-head"><div class="jarvis-title"><div class="jarvis-orb">J</div><div><h3>JARVIS</h3><p>Guests · campaigns · connections · email preparation</p></div></div><div style="display:flex;gap:8px"><button id="jarvisSpeakBtn" class="jarvis-speak-toggle" onclick="jarvisToggleSpeech()">🔊 Voice On</button><span id="jarvisState" class="jarvis-state">READY</span></div></div>
+          <div id="jarvisMessages" class="jarvis-messages"><div class="jmsg jarvis">Good day. JARVIS is ready. Tap the microphone and speak a command, or type below. I will prepare actions for review; I will not send email automatically.</div></div>
+          <div class="jarvis-quick"><button onclick="jarvisQuick('summary')">CRM Summary</button><button onclick="jarvisQuick('fnb')">F&amp;B Prospects</button><button onclick="jarvisQuick('connections')">Check Connections</button><button onclick="jarvisQuick('campaigns')">Campaign History</button><button onclick="jarvisQuick('draft')">Draft All-Services Email</button></div>
+          <form class="jarvis-compose" onsubmit="jarvisSubmit(event)"><input id="jarvisInput" placeholder="Ask or speak to JARVIS…" autocomplete="off"><button type="button" id="jarvisMicBtn" class="mic" onclick="jarvisToggleVoice()" title="Voice command">🎙️</button><button type="submit">Send</button></form>
+        </div>
+        <aside class="jarvis-side">
+          <div class="jarvis-card"><h4>CRM Snapshot</h4><div class="jarvis-kpi"><div><b id="jGuests">0</b><span>GUESTS</span></div><div><b id="jSubscribed">0</b><span>SUBSCRIBED</span></div><div><b id="jSelected">0</b><span>SELECTED</span></div><div><b id="jCampaigns">0</b><span>CAMPAIGNS</span></div></div></div>
+          <div class="jarvis-card"><h4>Connections</h4><p id="jSheets" class="jarvis-note">Google Sheets: checking…</p><p id="jOutlook" class="jarvis-note">Outlook: checking…</p></div>
+          <div class="jarvis-card"><h4>Voice Commands</h4><p class="jarvis-note">Try: “JARVIS, CRM summary”, “show F&amp;B prospects”, “find Kandle Cafe”, “check Outlook”, or “draft all-services email”. Your browser may ask for microphone permission the first time.</p></div>
+        </aside>
       </div>
     </section>
 
@@ -284,7 +333,24 @@ var outlookMsal=null;
 var outlookReadyPromise=null;
 
 
+
+let jarvisRecognition=null,jarvisListening=false;
+let jarvisSpeechOn=localStorage.getItem('salvation_jarvis_speech')!=='off';
+function jarvisVoiceSupported(){return !!(window.SpeechRecognition||window.webkitSpeechRecognition)}
+function jarvisSpeak(t){if(!jarvisSpeechOn||!('speechSynthesis'in window)||!t)return;speechSynthesis.cancel();let u=new SpeechSynthesisUtterance(String(t).replace(/\n+/g,' '));u.lang='en-PH';speechSynthesis.speak(u)}
+function jarvisSay(t,who='jarvis'){let b=document.getElementById('jarvisMessages');if(!b)return;let d=document.createElement('div');d.className='jmsg '+who;d.textContent=t;b.appendChild(d);b.scrollTop=b.scrollHeight;if(who==='jarvis')jarvisSpeak(t)}
+function jarvisUpdateVoiceUI(){let s=document.getElementById('jarvisSpeakBtn'),m=document.getElementById('jarvisMicBtn');if(s)s.textContent=jarvisSpeechOn?'🔊 Voice On':'🔇 Voice Off';if(m){m.classList.toggle('listening',jarvisListening);m.textContent=jarvisListening?'⏹':'🎙️'}}
+function jarvisToggleSpeech(){jarvisSpeechOn=!jarvisSpeechOn;localStorage.setItem('salvation_jarvis_speech',jarvisSpeechOn?'on':'off');if(!jarvisSpeechOn&&'speechSynthesis'in window)speechSynthesis.cancel();jarvisUpdateVoiceUI()}
+function jarvisRefresh(){let sub=guests.filter(g=>String(g.status||'').toLowerCase()==='subscribed').length;if(document.getElementById('jGuests'))jGuests.textContent=guests.length;if(document.getElementById('jSubscribed'))jSubscribed.textContent=sub;if(document.getElementById('jSelected'))jSelected.textContent=selected.size;if(document.getElementById('jCampaigns'))jCampaigns.textContent=(typeof localCampaigns==='function'?localCampaigns().length:0);if(document.getElementById('jSheets'))jSheets.textContent=(document.getElementById('gsConnBadge')?.textContent||'Google Sheets: unknown').replace(/^●\s*/,'');if(document.getElementById('jOutlook'))jOutlook.textContent=(document.getElementById('outlookConnBadge')?.textContent||'Outlook: unknown').replace(/^●\s*/,'')}
+function jarvisFind(q){q=q.toLowerCase();return guests.filter(g=>[g.firstName,g.lastName,g.company,g.email,g.phone,g.serviceInterest,g.status,g.source].join(' ').toLowerCase().includes(q))}
+async function jarvisQuick(k){jarvisState.textContent='WORKING';try{if(k==='summary'){let sub=guests.filter(g=>String(g.status||'').toLowerCase()==='subscribed').length;jarvisSay(`CRM summary: ${guests.length} guests and ${sub} subscribed contacts.`)}else if(k==='fnb'){let a=guests.filter(g=>/food|beverage|restaurant|cafe|bakery|patisserie|kitchen/i.test([g.serviceInterest,g.company,g.firstName].join(' ')));selected=new Set(a.map(g=>g.id));renderRecipients();jarvisRefresh();jarvisSay(`${a.length} F&B-related contacts are selected for review. Nothing has been sent.`)}else if(k==='connections'){await checkAllConnections();jarvisRefresh();jarvisSay(`${jSheets.textContent}. ${jOutlook.textContent}.`)}else if(k==='campaigns'){await loadHistory();jarvisRefresh();jarvisSay(`${typeof localCampaigns==='function'?localCampaigns().length:0} locally recorded campaigns are available. Open Sent History for details.`)}else if(k==='draft'){applyTemplate();jarvisSay('The All Services email is prepared. Open Email Blast to review it. Nothing has been sent.')}}catch(e){jarvisSay('JARVIS error: '+(e.message||e))}finally{jarvisState.textContent='READY'}}
+async function jarvisHandle(q){let s=String(q).toLowerCase().replace(/^\s*jarvis[\s,.:;-]*/,'').trim();if(/summary|overview|how many guest/.test(s))return jarvisQuick('summary');if(/connection|sheets|outlook/.test(s))return jarvisQuick('connections');if(/campaign|sent history/.test(s))return jarvisQuick('campaigns');if(/draft|compose|all services|email template/.test(s))return jarvisQuick('draft');if(/f&b|food|beverage|restaurant|cafe/.test(s))return jarvisQuick('fnb');if(/\b(send|delete|remove|update|edit)\b/.test(s)){jarvisSay('That action requires your confirmation in the CRM. I will not send email or change records automatically.');return}let term=s.replace(/^(find|show|search for|look up)\s+/i,'');let a=jarvisFind(term);if(a.length){selected=new Set(a.map(g=>g.id));renderRecipients();jarvisRefresh();jarvisSay(a.slice(0,8).map(g=>`${contactDisplay(g)} — ${g.email||'no email'}`).join('\n')+'\n\nSelected for review; nothing has been sent.')}else jarvisSay('I could not match that request. Try CRM summary, F&B prospects, check connections, campaign history, draft all-services email, or a company name.')}
+async function jarvisSubmit(e){e.preventDefault();let i=document.getElementById('jarvisInput'),q=i.value.trim();if(!q)return;jarvisSay(q,'user');i.value='';await jarvisHandle(q)}
+function jarvisSetupRecognition(){let SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR)return null;let r=new SR();r.lang='en-PH';r.continuous=false;r.interimResults=true;r.onstart=()=>{jarvisListening=true;jarvisState.textContent='LISTENING';jarvisUpdateVoiceUI()};r.onresult=e=>{let f='',x='';for(let i=e.resultIndex;i<e.results.length;i++){let t=e.results[i][0].transcript;e.results[i].isFinal?f+=t:x+=t}jarvisInput.value=(f||x).trim();if(f.trim()){jarvisSay(f.trim(),'user');jarvisInput.value='';jarvisHandle(f.trim())}};r.onerror=e=>{if(e.error!=='aborted')jarvisSay('Microphone error: '+e.error+'. Check browser microphone permission.');};r.onend=()=>{jarvisListening=false;jarvisState.textContent='READY';jarvisUpdateVoiceUI()};return r}
+function jarvisToggleVoice(){if(!jarvisVoiceSupported()){jarvisSay('Voice recognition is not available in this browser. Use the text box or try a browser with Web Speech recognition support.');return}if(!jarvisRecognition)jarvisRecognition=jarvisSetupRecognition();if(jarvisListening){jarvisRecognition.stop();return}try{jarvisRecognition.start()}catch(e){jarvisSay('The microphone could not start. Check microphone permission and try again.')}}
+
 function showTab(id){
+ if(id==='jarvis')setTimeout(()=>{jarvisRefresh();jarvisUpdateVoiceUI()},0);
  document.querySelectorAll('.section').forEach(x=>x.classList.toggle('active',x.id===id));
  document.querySelectorAll('.nav button').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));
  if(id==='guests') loadGuests(); if(id==='dashboard') updateMetrics(); if(id==='email') loadGuests().then(renderRecipients);
