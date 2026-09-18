@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Salvation Solutions CRM</title>
-<meta name="crm-build" content="outlook-graph-v13-guests-added">
+<meta name="crm-build" content="outlook-graph-v14-verified-guest-import">
 <style>
 :root{
   --nav:#263b78; --nav2:#1f3269; --ink:#17254c; --muted:#6b7693;
@@ -123,7 +123,7 @@ if(typeof msal==='undefined'){
     </section>
 
     <section id="guests" class="section">
-      <div class="topbar"><div><h1>Guest Database</h1><p>Central contact list stored through your Google Sheets backend.</p></div><div class="actions"><button class="btn" onclick="loadGuests()">↻ Refresh</button><button class="btn primary" onclick="openGuest()">+ Add Guest</button></div></div>
+      <div class="topbar"><div><h1>Guest Database</h1><p>Central contact list stored through your Google Sheets backend.</p></div><div class="actions"><button class="btn" onclick="seedProvidedGuests(true)">⇩ Import 16 Guests</button><button class="btn" onclick="loadGuests()">↻ Refresh</button><button class="btn primary" onclick="openGuest()">+ Add Guest</button></div></div>
       <div class="card">
         <div class="toolbar"><input id="search" class="field grow" placeholder="Search name, company, email or phone…" oninput="renderGuests()"><select id="filterStatus" class="field" onchange="renderGuests()"><option value="">All contacts</option><option>Subscribed</option><option>Unsubscribed</option></select></div>
         <div class="table-wrap"><table><thead><tr><th><input type="checkbox" id="selectAll" onchange="toggleAll(this.checked)"></th><th>First Name</th><th>Last Name</th><th>Company</th><th>Email</th><th>Phone</th><th>Service Interest</th><th>Status</th><th>Added</th></tr></thead><tbody id="guestRows"></tbody></table></div>
@@ -211,7 +211,7 @@ function crmLogin(e){
    err.style.display='none';
    document.getElementById('loginGate').classList.add('hidden');
    document.getElementById('crmPassword').value='';
-   loadGuests().then(seedProvidedGuests);
+   loadGuests();
  }else{
    err.style.display='block';
    document.getElementById('crmPassword').value='';
@@ -235,9 +235,46 @@ function toggleLoginPassword(){
 }
 document.addEventListener('DOMContentLoaded',()=>{
  const gate=document.getElementById('loginGate');
- if(sessionStorage.getItem(CRM_AUTH_KEY)==='1'){ gate.classList.add('hidden'); setTimeout(seedProvidedGuests,400); }
+ if(sessionStorage.getItem(CRM_AUTH_KEY)==='1'){ gate.classList.add('hidden'); }
  else gate.classList.remove('hidden');
 });
+
+
+const CRM_SEED_GUESTS=[{"firstName": "Old Baguio Heritage Cafe and Restaurant", "lastName": "", "company": "", "email": "obc.vluna@gmail.com", "phone": "+63 917 790 8823", "serviceInterest": "", "status": "", "source": ""}, {"firstName": "Dylan Patisserie Quezon City", "lastName": "", "company": "", "email": "info@dylanpatisserie.com", "phone": "+63 917 714 3956", "serviceInterest": "", "status": "", "source": ""}, {"firstName": "Kandle Cafe", "lastName": "", "company": "", "email": "kandlecafe@gmail.com", "phone": "+63 922 395 3179", "serviceInterest": "", "status": "", "source": ""}, {"firstName": "Romulo Café", "lastName": "", "company": "", "email": "caferomulo@yahoo.com.ph", "phone": "+63 2 8332 7273", "serviceInterest": "", "status": "", "source": ""}, {"firstName": "Kamuning Bakery Cafe", "lastName": "", "company": "", "email": "kamuningbakerycafe@gmail.com", "phone": "+63 2 8929 2216", "serviceInterest": "", "status": "", "source": ""}, {"firstName": "Pio's Kitchen", "lastName": "", "company": "", "email": "pioskitchenph@gmail.com", "phone": "+63 2 8398 0005", "serviceInterest": "", "status": "", "source": ""}, {"firstName": "Ilustrado Restaurant", "lastName": "", "company": "", "email": "catering.ilustrado1@gmail.com", "phone": "+63 2 8527 2345", "serviceInterest": "", "status": "", "source": ""}, {"firstName": "Your Local", "lastName": "", "company": "", "email": "hello@yourlocal.ph", "phone": "+63 977 487 9236", "serviceInterest": "", "status": "", "source": ""}, {"firstName": "Angelica Bakeshop", "lastName": "", "company": "", "email": "angelicabakeshop@yahoo.com", "phone": "+63 32 412 6003", "serviceInterest": "", "status": "", "source": ""}, {"firstName": "Fourth Street Cafe", "lastName": "", "company": "", "email": "4thstreetcafedvo@gmail.com", "phone": "+63 927 974 9146", "serviceInterest": "", "status": "", "source": ""}, {"firstName": "Wood and Coffee Davao", "lastName": "", "company": "", "email": "woodandcoffeeph@gmail.com", "phone": "", "serviceInterest": "", "status": "", "source": ""}, {"firstName": "Lachi's", "lastName": "", "company": "", "email": "lachisdesserts@gmail.com", "phone": "+63 82 224 5552", "serviceInterest": "", "status": "", "source": ""}, {"firstName": "Cafe Esse", "lastName": "", "company": "", "email": "cafetoexist@gmail.com", "phone": "+63 917 902 3522", "serviceInterest": "", "status": "", "source": ""}, {"firstName": "Crescent Moon Café", "lastName": "", "company": "", "email": "crescentmooncafeantipolo@gmail.com", "phone": "+63 917 523 2356", "serviceInterest": "", "status": "", "source": ""}, {"firstName": "The Giving Cafe", "lastName": "", "company": "", "email": "info@tgc.ph", "phone": "", "serviceInterest": "", "status": "", "source": ""}, {"firstName": "Steak To One PH", "lastName": "", "company": "", "email": "since2016@steaktooneph.com", "phone": "+63 917 523 2356", "serviceInterest": "", "status": "", "source": ""}];
+let seedImportRunning=false;
+async function seedProvidedGuests(force=false){
+ if(seedImportRunning)return;
+ seedImportRunning=true;
+ const key='salvation_crm_seed_fnb_verified_v2';
+ try{
+  const before=await api('GET_GUESTS');
+  const arr=Array.isArray(before)?before:(before.guests||before.data||[]);
+  const existing=new Set(arr.map(x=>String(x.email||'').trim().toLowerCase()).filter(Boolean));
+  const missing=CRM_SEED_GUESTS.filter(g=>!existing.has(g.email.toLowerCase()));
+  let added=0,failed=[];
+  for(const g of missing){
+   try{
+    const r=await api('SAVE_GUEST',{guest:g});
+    if(r && r.ok===false)throw new Error(r.error||'SAVE_GUEST failed');
+    added++;
+   }catch(e){failed.push(g.firstName+': '+(e.message||e));}
+  }
+  const after=await api('GET_GUESTS');
+  const finalArr=Array.isArray(after)?after:(after.guests||after.data||[]);
+  const finalEmails=new Set(finalArr.map(x=>String(x.email||'').trim().toLowerCase()));
+  const stillMissing=CRM_SEED_GUESTS.filter(g=>!finalEmails.has(g.email.toLowerCase()));
+  guests=finalArr; renderGuests(); updateMetrics();
+  if(stillMissing.length===0){
+   localStorage.setItem(key,'done');
+   alert('Guest import complete. All 16 business contacts are now verified in Google Sheets.');
+  }else{
+   alert('Guest import incomplete. '+(16-stillMissing.length)+'/16 verified in Google Sheets.\n\n'+
+     (failed.length?failed.slice(0,5).join('\n'):'Backend did not return the missing records.'));
+  }
+ }catch(e){
+  alert('Google Sheets guest import failed: '+(e.message||e));
+ }finally{seedImportRunning=false;}
+}
 
 const CONFIG_KEY='salvation_crm_config';
 const HARDCODED_BACKEND='https://script.google.com/macros/s/AKfycbwHYEJB14Fc00X1-HbbmrjlsHGhF1OfFhfXC6tQ16AS0Z8yejtRLJu6AKverjo_VGud/exec';
