@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Salvation Solutions CRM</title>
-<meta name="crm-build" content="outlook-graph-v12-history-reliable">
+<meta name="crm-build" content="outlook-graph-v13-guests-added">
 <style>
 :root{
   --nav:#263b78; --nav2:#1f3269; --ink:#17254c; --muted:#6b7693;
@@ -211,7 +211,7 @@ function crmLogin(e){
    err.style.display='none';
    document.getElementById('loginGate').classList.add('hidden');
    document.getElementById('crmPassword').value='';
-   loadGuests();
+   loadGuests().then(seedProvidedGuests);
  }else{
    err.style.display='block';
    document.getElementById('crmPassword').value='';
@@ -235,7 +235,7 @@ function toggleLoginPassword(){
 }
 document.addEventListener('DOMContentLoaded',()=>{
  const gate=document.getElementById('loginGate');
- if(sessionStorage.getItem(CRM_AUTH_KEY)==='1') gate.classList.add('hidden');
+ if(sessionStorage.getItem(CRM_AUTH_KEY)==='1'){ gate.classList.add('hidden'); setTimeout(seedProvidedGuests,400); }
  else gate.classList.remove('hidden');
 });
 
