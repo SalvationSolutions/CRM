@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Salvation Solutions CRM</title>
-<meta name="crm-build" content="outlook-graph-v8-send-body-fixed">
+<meta name="crm-build" content="outlook-graph-v10-login-gate">
 <style>
 :root{
   --nav:#263b78; --nav2:#1f3269; --ink:#17254c; --muted:#6b7693;
@@ -43,6 +43,23 @@ button,input,select,textarea{font:inherit} button{cursor:pointer}
 .rlist{border:1px solid var(--line);border-radius:10px;max-height:430px;overflow:auto}.rrow{display:flex;align-items:center;gap:9px;padding:10px;border-bottom:1px solid var(--line)}.rrow span{flex:1}.rrow small{display:block;color:var(--muted)}
 .preview{background:#eee;border-radius:10px;padding:16px}.mail{max-width:540px;margin:auto;background:white}.mailhead{background:#263b78;color:white;padding:22px;text-align:center;font-weight:900}.mailbody{padding:20px;line-height:1.6}.cta{display:inline-block;background:#263b78;color:white;padding:9px 14px;border-radius:7px;margin-top:10px}
 @media(max-width:950px){.eGrid{grid-template-columns:1fr}}
+
+/* CRM Login Gate */
+.loginGate{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;padding:22px;background:linear-gradient(135deg,#1f3269,#263b78 55%,#3553a0)}
+.loginGate.hidden{display:none}
+.loginCard{width:min(430px,100%);background:#fff;border-radius:22px;padding:34px;box-shadow:0 28px 80px rgba(9,20,55,.32)}
+.loginBrand{text-align:center;margin-bottom:27px}.loginMark{width:62px;height:62px;margin:0 auto 14px;border-radius:18px;background:#263b78;color:#fff;display:grid;place-items:center;font-size:27px;font-weight:900}
+.loginBrand h1{margin:0;color:#17254c;font-size:25px}.loginBrand p{margin:7px 0 0;color:#6b7693;font-size:14px}
+.loginField{display:block;margin:14px 0;color:#52607f;font-size:12px;font-weight:800}.loginField input{width:100%;margin-top:7px;padding:13px 14px;border:1px solid #dbe2ee;border-radius:11px;outline:none;color:#17254c;background:#fff}
+.loginField input:focus{border-color:#2e5db8;box-shadow:0 0 0 3px rgba(46,93,184,.10)}
+.loginPassword{position:relative}.loginPassword input{padding-right:52px}.showPass{position:absolute;right:8px;top:35px;border:0;background:transparent;color:#52607f;padding:8px;font-weight:800}
+.loginBtn{width:100%;border:0;border-radius:11px;padding:13px 16px;margin-top:8px;background:#263b78;color:#fff;font-weight:850}
+.loginError{display:none;margin-top:13px;padding:10px 12px;border-radius:10px;background:#fff0f0;color:#a33;font-size:13px;text-align:center}
+.loginFoot{text-align:center;color:#8a94aa;font-size:11px;margin-top:18px}
+.logoutBtn{border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.08);color:#fff;border-radius:11px;padding:10px 14px;font-weight:800;width:100%;margin-top:12px}
+@media(max-width:980px){.logoutBtn{font-size:0;padding:11px}.logoutBtn:after{content:"↪";font-size:22px}}
+@media(max-width:640px){.loginCard{padding:27px 22px}.logoutBtn{position:fixed;right:10px;bottom:76px;width:48px;height:48px;border-radius:50%;background:#263b78;z-index:20}}
+
 </style>
 <script type="text/javascript" src="https://alcdn.msauth.net/browser/2.35.0/js/msal-browser.min.js"></script>
 <script type="text/javascript">
@@ -51,6 +68,27 @@ if(typeof msal==='undefined'){
 }
 </script></head>
 <body>
+
+<div id="loginGate" class="loginGate">
+  <form class="loginCard" onsubmit="crmLogin(event)" autocomplete="off">
+    <div class="loginBrand">
+      <div class="loginMark">S</div>
+      <h1>Salvation Solutions CRM</h1>
+      <p>Sign in to access your CRM workspace.</p>
+    </div>
+    <label class="loginField">Username
+      <input id="crmUsername" type="text" autocomplete="username" placeholder="Enter username" required autofocus>
+    </label>
+    <label class="loginField loginPassword">Password
+      <input id="crmPassword" type="password" autocomplete="current-password" placeholder="Enter password" required>
+      <button type="button" class="showPass" onclick="toggleLoginPassword()" aria-label="Show or hide password">Show</button>
+    </label>
+    <button class="loginBtn" type="submit">Sign In</button>
+    <div id="loginError" class="loginError">Incorrect username or password.</div>
+    <div class="loginFoot">Authorized access only · Salvation Solutions</div>
+  </form>
+</div>
+
 <div class="app">
   <aside class="sidebar">
     <div class="brand"><small>SALVATION SOLUTIONS</small><strong>CRM</strong></div>
@@ -59,6 +97,7 @@ if(typeof msal==='undefined'){
       <button data-tab="guests"><span class="ico">♙</span><span class="label">Guest Database</span></button>
       <button data-tab="email"><span class="ico">✉</span><span class="label">Email Blast</span></button>
     </nav>
+    <button type="button" class="logoutBtn" onclick="crmLogout()">↪ <span>Sign Out</span></button>
     <div class="side-foot">Salvation Solutions · CRM</div>
   </aside>
 
@@ -151,6 +190,49 @@ if(typeof msal==='undefined'){
 </div></div>
 
 <script>
+
+const CRM_LOGIN_USER='Luna';
+const CRM_LOGIN_PASS='M@ndy@377';
+const CRM_AUTH_KEY='salvation_crm_logged_in';
+
+function crmLogin(e){
+ e.preventDefault();
+ const u=document.getElementById('crmUsername').value.trim();
+ const p=document.getElementById('crmPassword').value;
+ const err=document.getElementById('loginError');
+ if(u===CRM_LOGIN_USER && p===CRM_LOGIN_PASS){
+   sessionStorage.setItem(CRM_AUTH_KEY,'1');
+   err.style.display='none';
+   document.getElementById('loginGate').classList.add('hidden');
+   document.getElementById('crmPassword').value='';
+   loadGuests();
+ }else{
+   err.style.display='block';
+   document.getElementById('crmPassword').value='';
+   document.getElementById('crmPassword').focus();
+ }
+}
+function crmLogout(){
+ if(!confirm('Sign out of Salvation Solutions CRM?')) return;
+ sessionStorage.removeItem(CRM_AUTH_KEY);
+ document.getElementById('loginGate').classList.remove('hidden');
+ document.getElementById('crmUsername').value='';
+ document.getElementById('crmPassword').value='';
+ document.getElementById('loginError').style.display='none';
+ document.getElementById('crmUsername').focus();
+}
+function toggleLoginPassword(){
+ const p=document.getElementById('crmPassword');
+ const b=document.querySelector('.showPass');
+ p.type=p.type==='password'?'text':'password';
+ b.textContent=p.type==='password'?'Show':'Hide';
+}
+document.addEventListener('DOMContentLoaded',()=>{
+ const gate=document.getElementById('loginGate');
+ if(sessionStorage.getItem(CRM_AUTH_KEY)==='1') gate.classList.add('hidden');
+ else gate.classList.remove('hidden');
+});
+
 const CONFIG_KEY='salvation_crm_config';
 const HARDCODED_BACKEND='https://script.google.com/macros/s/AKfycbwHYEJB14Fc00X1-HbbmrjlsHGhF1OfFhfXC6tQ16AS0Z8yejtRLJu6AKverjo_VGud/exec';
 let guests=[], selected=new Set();
@@ -219,13 +301,42 @@ function queue(){let a=chosen();if(!a.length)return alert('Select at least one g
 function renderOut(){oq.textContent=outbox.length+' queued';olist.innerHTML=outbox.length?outbox.map((o,i)=>`<div class="outbox-item" style="padding:12px;border-bottom:1px solid var(--line)"><b>${esc(o.g.firstName+' '+o.g.lastName)}</b> · ${esc(o.g.email)}<br><small>${esc(o.subject)}</small><button class="btn danger" style="float:right;padding:4px 8px" onclick="outbox.splice(${i},1);renderOut()">Remove</button></div>`).join(''):'<div class="empty">No emails queued.</div>'}
 async function sendQueue(ev){
  if(!outbox.length)return alert('Outbox is empty.');
+ const btn=ev?.currentTarget;
+ if(btn){btn.disabled=true;btn.textContent='Sending…';}
  try{
   await ensureOutlookConnected();
-  let sent=0,failed=0,errs=[];
-  for(const o of outbox){try{await graphSendMail(o);sent++;}catch(e){failed++;errs.push(o.g.email+': '+e.message)}}
+  const campaignId='CMP-'+Date.now().toString(36).toUpperCase();
+  const campaignName=(document.getElementById('emailTemplate')?.selectedOptions?.[0]?.text||'Outlook Campaign').trim();
+  const campaignSubject=outbox[0]?.subject||document.getElementById('subject')?.value||'Outlook Campaign';
+  const total=outbox.length;
+  let sent=0,failed=0,errs=[],failedAddresses=new Set();
+
+  for(const o of outbox){
+   let status='SENT',error='';
+   try{await graphSendMail(o);sent++;}
+   catch(e){failed++;status='FAILED';error=e.message||String(e);failedAddresses.add(o.g.email);errs.push(o.g.email+': '+error);}
+   try{
+    await api('LOG_EMAIL',{email:{
+     campaignId,
+     recipientName:[o.g.firstName,o.g.lastName].filter(Boolean).join(' '),
+     email:o.g.email,subject:o.subject,status,error
+    }});
+   }catch(logErr){console.warn('EmailLog failed:',logErr);}
+  }
+
+  await api('LOG_CAMPAIGN',{campaign:{
+   campaignId,campaignName,subject:campaignSubject,
+   recipientCount:total,sent,failed,
+   sender:(outlookAccount?.username||document.getElementById('outlookEmail')?.value||'Salvation Solutions / Outlook')
+  }});
+
+  await loadHistory();
+  mSent.textContent=sent;
   alert('Outlook direct send complete. Sent: '+sent+' · Failed: '+failed+(errs.length?'\n'+errs.slice(0,5).join('\n'):''));
-  if(!failed){outbox=[];renderOut();}
- }catch(e){alert('Outlook send failed: '+e.message)}
+  outbox=failed?outbox.filter(o=>failedAddresses.has(o.g.email)):[];
+  renderOut();
+ }catch(e){alert('Outlook send/history failed: '+e.message);}
+ finally{if(btn){btn.disabled=false;btn.textContent='Send All via Outlook';}}
 }
 async function loadHistory(){try{let r=await api('GET_CAMPAIGNS'),a=r.campaigns||[];hist.innerHTML=a.length?a.map(x=>`<tr><td>${esc(x.dateSent||'—')}</td><td>${esc(x.campaignName||x.name||'—')}</td><td>${esc(x.subject||'—')}</td><td>${esc(x.recipientCount||'—')}</td><td>${esc(x.sent||0)}</td><td>${esc(x.failed||0)}</td></tr>`).join(''):'<tr><td colspan="6" class="empty">No sent campaigns yet.</td></tr>'}catch(e){hist.innerHTML='<tr><td colspan="6" class="empty">'+esc(e.message)+'</td></tr>'}}
 
