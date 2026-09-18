@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Salvation Solutions CRM</title>
-<meta name="crm-build" content="outlook-graph-v16-all-services-template">
+<meta name="crm-build" content="outlook-graph-v16-1-login-syntax-fixed">
 <style>
 :root{
   --nav:#263b78; --nav2:#1f3269; --ink:#17254c; --muted:#6b7693;
@@ -377,18 +377,18 @@ function pers(x,g){return String(x||'').replaceAll('{{first_name}}',g.firstName|
 function tag(x){let m=document.getElementById('message'),p=m.selectionStart||0;m.value=m.value.slice(0,p)+x+m.value.slice(p);m.focus();live()}
 function live(){let g=chosen()[0]||guests[0]||{},m=pers(message.value,g),ct=ctaText.value,gn=greetingName(g);m=m.replace(/^\s*(Hi|Dear|Good Day)(\s+[^,\n]*?)?,?\s*\n+/i,'');liveBody.innerHTML='<b>'+(gn?'Good Day '+esc(gn)+',':'Good Day,')+'</b><br><br>'+esc(m).replace(/\n/g,'<br>')+(ct?'<br><span class="cta">'+esc(ct)+'</span>':'')+'<br><br>Regards,<br><b>Salvation Solutions</b>'}
 function applyTemplate(){
- const x=[
-  'Helping {{company}} simplify operations with smarter technology',
-  'Salvation Solutions helps businesses simplify operations, improve visibility, and reduce repetitive work through practical technology solutions.
+ const subjectText='Helping {{company}} simplify operations with smarter technology';
+ const messageText=`Salvation Solutions helps businesses simplify operations, improve visibility, and reduce repetitive work through practical technology solutions.
 
 Our services include IT Asset Management, Service Delivery, MIS & Digital Transformation, Food & Beverage IT Solutions including POS, Inventory and CRM systems, and AI & Automation.
 
 Whether {{company}} needs to improve an existing process or build a more efficient digital workflow, we would be glad to discuss how Salvation Solutions can support your business.
 
-We can arrange a short consultation to understand your current needs and recommend the right solution.',
-  'Explore Our Solutions'
- ];
- subject.value=x[0];message.value=x[1];ctaText.value=x[2];live();
+We can arrange a short consultation to understand your current needs and recommend the right solution.`;
+ subject.value=subjectText;
+ message.value=messageText;
+ ctaText.value='Explore Our Solutions';
+ live();
 }
 function queue(){let a=chosen();if(!a.length)return alert('Select at least one guest.');if(!subject.value.trim()||!message.value.trim())return alert('Subject and message are required.');outbox=a.map(g=>({id:String(g.id||g.email),g,subject:pers(subject.value,g),message:pers(message.value,g)}));document.querySelectorAll('.eTab')[1].click()}
 function renderOut(){oq.textContent=outbox.length+' queued';olist.innerHTML=outbox.length?outbox.map((o,i)=>`<div class="outbox-item" style="padding:12px;border-bottom:1px solid var(--line)"><b>${esc(contactDisplay(o.g))}</b> · ${esc(o.g.email)}<br><small>${esc(o.subject)}</small><button class="btn danger" style="float:right;padding:4px 8px" onclick="outbox.splice(${i},1);renderOut()">Remove</button></div>`).join(''):'<div class="empty">No emails queued.</div>'}
